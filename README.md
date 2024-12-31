@@ -12,7 +12,7 @@ It provides tools for astrophysical and physical calculations, supporting multip
 ## **License**
 
 This project is licensed under the terms of the **GNU General Public License v3.0**.  
-See the [LICENSE](./LICENSE) file for details.  
+See the [LICENSE](https://github.com/sapphimars/physkit/blob/main/LICENSE) file for details.  
 
 Copyright (C) 2024 [sapphimars](https://github.com/sapphimars)  
 
@@ -22,8 +22,8 @@ Copyright (C) 2024 [sapphimars](https://github.com/sapphimars)
 
 This project makes use of the following third-party libraries:
 
-- **[Matplotlib](https://matplotlib.org/)** - Licensed under the Matplotlib License Agreement. See [licenses/LICENSE-MATPLOTLIB.txt](./licenses/LICENSE-MATPLOTLIB.txt).
-- **[Pint](https://github.com/hgrecco/pint)** - Licensed under the BSD 3-Clause License. See [licenses/LICENSE-PINT.txt](./licenses/LICENSE-PINT.txt).
+- **[Matplotlib](https://matplotlib.org/)** - Licensed under the Matplotlib License Agreement. See [licenses/LICENSE-MATPLOTLIB.txt](https://github.com/sapphimars/physkit/blob/main/licenses/LICENSE-MATPLOTLIB.txt) or [directly on their repository](https://github.com/matplotlib/matplotlib/tree/main/LICENSE).
+- **[Pint](https://github.com/hgrecco/pint)** - Licensed under the BSD 3-Clause License. See [licenses/LICENSE-PINT.txt](https://github.com/sapphimars/physkit/blob/main/licenses/LICENSE-PINT.txt) or [directly on their repository](https://github.com/hgrecco/pint/blob/master/LICENSE).
 
 Note: Third-party libraries included in this project are licensed under their respective terms. See the `licenses/` directory for full details.
 
