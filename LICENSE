@@ -673,12 +673,3 @@ the library.  If this is what you want to do, use the GNU Lesser General
 Public License instead of this License.  But first, please read
 <https://www.gnu.org/licenses/why-not-lgpl.html>.
 
-## Third-Party Licenses
-This project includes third-party libraries with the following licenses:
-
-- Matplotlib (https://matplotlib.org/) - See `licenses/LICENSE-MATPLOTLIB.txt`.
-- Pint (https://github.com/hgrecco/pint) - See `licenses/LICENSE-PINT.txt`.
-
-
-
-For inquiries, please contact: https://github.com/sapphimars
