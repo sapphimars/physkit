@@ -32,7 +32,7 @@ from .equations import equations
 
 # from .cli import main
 
-__version__ = "0.1.8"
+__version__ = "0.1.9"
 
 __all__ = [
     "set_default",
