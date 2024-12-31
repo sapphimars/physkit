@@ -25,8 +25,8 @@ classifiers = [
     "Operating System :: OS Independent"
 ]
 dependencies = [
-    "pint>=0.20",
-    "matplotlib>=3.5",
+    "pint>=0.24.4",
+    "matplotlib>=3.10.0",
 ]
 
 [project.scripts]

@@ -17,8 +17,8 @@ Copyright (C) 2024 [sapphimars](https://github.com/sapphimars)
 
 This project makes use of the following third-party libraries:
 
-- **Matplotlib** - Licensed under the Matplotlib License Agreement. See [licenses/LICENSE-MATPLOTLIB.txt](./licenses/LICENSE-MATPLOTLIB.txt).
-- **Pint** - Licensed under the BSD 3-Clause License. See [licenses/LICENSE-PINT.txt](./licenses/LICENSE-PINT.txt).
+- **[Matplotlib](https://matplotlib.org/)** - Licensed under the Matplotlib License Agreement. See [licenses/LICENSE-MATPLOTLIB.txt](./licenses/LICENSE-MATPLOTLIB.txt).
+- **[Pint](https://github.com/hgrecco/pint)** - Licensed under the BSD 3-Clause License. See [licenses/LICENSE-PINT.txt](./licenses/LICENSE-PINT.txt).
 
 Note: Third-party libraries included in this project are licensed under their respective terms. See the `licenses/` directory for full details.
 
