@@ -29,8 +29,8 @@ jobs:
       - name: Run Tests
         run: pdm run pytest --tb=short
 
-  publish:
-    needs: test
+  publish-testpypi:
+    needs: test  # Requires tests to pass first
     runs-on: ubuntu-latest
 
     steps:
@@ -47,15 +47,30 @@ jobs:
         run: pdm build
 
       - name: Publish to TestPyPI
-        if: github.event_name == 'push' && contains(github.ref, 'refs/tags')
         env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_PASSWORD }}
-        run: pdm publish --repository testpypi
+          PYPI_USERNAME: ${{ secrets.TEST_PYPI_USERNAME }}
+          PYPI_PASSWORD: ${{ secrets.TEST_PYPI_PASSWORD }}
+        run: pdm publish --repository testpypi --username $PYPI_USERNAME --password $PYPI_PASSWORD
+
+  publish-pypi:
+    needs: [test, publish-testpypi] # Requires both tests and TestPyPI publish to pass
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Python and PDM
+        uses: pdm-project/setup-pdm@v4
+        with:
+          python-version: "3.12"
+          cache: true
+
+      - name: Build Package
+        run: pdm build
 
       - name: Publish to PyPI
-        if: github.event_name == 'push' && contains(github.ref, 'refs/tags')
         env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-        run: pdm publish
+          PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        run: pdm publish --repository pypi --username $PYPI_USERNAME --password $PYPI_PASSWORD
