@@ -91,3 +91,7 @@ def run_constant(args):
 
     val, unit = value
     print(f"{args.name} = {val} {unit}")
+
+
+# if __name__ == "__main__":
+#    main()

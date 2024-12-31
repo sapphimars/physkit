@@ -30,6 +30,10 @@ from .conversions import convert_unit, convert_to_base_units, convert_unit_syste
 from .plot_styler import plot_styler
 from .equations import equations
 
+# from .cli import main
+
+__version__ = "0.1.1"
+
 __all__ = [
     "set_default",
     "get_ureg",
@@ -39,4 +43,5 @@ __all__ = [
     "convert_unit_system",
     "plot_styler",
     "equations",
+    # "main",
 ]

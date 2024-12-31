@@ -25,10 +25,12 @@ version = "0.1.1"
 [project.scripts]
 physkit = "physkit.cli:main"
 
+
 [build-system]
 requires = ["pdm-backend"]
 build-backend = "pdm.backend"
 
 
 [tool.pdm]
+packages = [{ include = "physkit", from = "src" }]
 distribution = true

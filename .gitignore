@@ -24,5 +24,4 @@ build/
 
 .DS_Store
 .pdm-python
-src/
 pdm.lock
