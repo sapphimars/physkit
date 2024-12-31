@@ -20,7 +20,7 @@ dependencies = [
     "pdm-backend>=2.4.3",
 ]
 
-dynamic = ["version"]
+version = "0.1.1"
 
 [project.scripts]
 physkit = "physkit.cli:main"
@@ -31,10 +31,4 @@ build-backend = "pdm.backend"
 
 
 [tool.pdm]
-version = { source = "scm" }
 distribution = true
-
-[dependency-groups]
-dev = [
-    "pytest>=8.3.4",
-]
