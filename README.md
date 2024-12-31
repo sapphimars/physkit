@@ -3,7 +3,6 @@
 [![Build Status](https://github.com/sapphimars/physkit/actions/workflows/test.yml/badge.svg)](https://github.com/sapphimars/physkit/actions/workflows/test.yml)
 [![PyPI Version](https://img.shields.io/pypi/v/physkit)](https://pypi.org/project/physkit/)
 [![License](https://img.shields.io/github/license/sapphimars/physkit)](https://github.com/sapphimars/physkit/blob/main/LICENSE)
-[![Downloads](https://static.pepy.tech/badge/physkit)](https://pepy.tech/project/physkit)
 
 **Physkit** is a Python library for performing scientific computations, unit conversions, and working with physical constants and equations.  
 It provides tools for astrophysical and physical calculations, supporting multiple unit systems and CLI functionalities.

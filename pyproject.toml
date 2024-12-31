@@ -3,7 +3,7 @@ name = "physkit"
 description = "A Python toolkit providing physical constants, unit conversions, and plotting styles"
 readme = "README.md"
 requires-python = ">=3.12"
-license = { text = "GNU General Public License v3 (GPLv3)" }
+license = { text = "GPL-3.0-or-later" }
 authors = [
     { name = "sapphimars" },
 ]
@@ -20,7 +20,7 @@ dependencies = [
     "pdm-backend>=2.4.3",
 ]
 
-version = "0.1.11"
+version = "0.1.12"
 
 
 [project.scripts]
