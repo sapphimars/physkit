@@ -28,7 +28,7 @@ def main():
     """
     parser = argparse.ArgumentParser(
         prog="physkit",
-        description="A CLI for the physkit library to display constants or convert units)",
+        description="A CLI for the physkit library to display constants or convert units",
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Sub-command to run")

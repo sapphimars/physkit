@@ -30,9 +30,8 @@ from .conversions import convert_unit, convert_to_base_units, convert_unit_syste
 from .plot_styler import plot_styler
 from .equations import equations
 
-# from .cli import main
 
-__version__ = "0.1.15"
+__version__ = "0.1.16"
 
 __all__ = [
     "set_default",
@@ -43,5 +42,4 @@ __all__ = [
     "convert_unit_system",
     "plot_styler",
     "equations",
-    # "main",
 ]
