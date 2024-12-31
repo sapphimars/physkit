@@ -33,7 +33,7 @@ Note: Third-party libraries included in this project are licensed under their re
 
 ### **Requirements**
 
-- Python **3.8** or higher  
+- Python **3.12** or higher  
 - Dependencies:
   - **Matplotlib** >= 3.5  
   - **Pint** >= 0.20  
