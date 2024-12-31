@@ -20,7 +20,7 @@ dependencies = [
     "pdm-backend>=2.4.3",
 ]
 
-version = "0.1.3"
+version = "0.1.4"
 
 [project.scripts]
 physkit = "physkit.cli:main"
