@@ -11,6 +11,6 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install dependencies
-        run: pdm install --dev
+        run: pdm install -G test --frozen-lockfile
       - name: Run tests
         run: pdm run pytest --tb=short
