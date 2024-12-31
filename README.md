@@ -1,6 +1,12 @@
 # Physkit - A Python toolkit for constants, unit conversions, and equations
 
-Physkit is a Python library for performing scientific computations, unit conversions, and working with physical constants and equations. It provides tools for astrophysical and physical calculations, supporting multiple unit systems and CLI functionalities.
+[![Build Status](https://github.com/sapphimars/physkit/actions/workflows/test.yml/badge.svg)](https://github.com/sapphimars/physkit/actions/workflows/test.yml)
+[![PyPI Version](https://img.shields.io/pypi/v/physkit)](https://pypi.org/project/physkit/)
+[![License](https://img.shields.io/github/license/sapphimars/physkit)](https://github.com/sapphimars/physkit/blob/main/LICENSE)
+[![Downloads](https://static.pepy.tech/badge/physkit)](https://pepy.tech/project/physkit)
+
+**Physkit** is a Python library for performing scientific computations, unit conversions, and working with physical constants and equations.  
+It provides tools for astrophysical and physical calculations, supporting multiple unit systems and CLI functionalities.
 
 ---
 
@@ -28,16 +34,10 @@ Note: Third-party libraries included in this project are licensed under their re
 
 ### **Requirements**
 
-- Python 3.8 or higher
+- Python **3.8** or higher  
 - Dependencies:
-  - **Matplotlib** >= 3.5
-  - **Pint** >= 0.20
-
-Install dependencies via pip
-```bash
-pip install -r requirements.txt
-```
-
+  - **Matplotlib** >= 3.5  
+  - **Pint** >= 0.20  
 
 ---
 
@@ -46,6 +46,19 @@ pip install -r requirements.txt
 pip install physkit
 ```
 
+---
+
+### **For Development**
+```bash
+pdm install
+```
+
+To install test dependencies:
+```bash
+pdm install -G test
+```
+
+---
 
 ## **Usage Examples**
 
@@ -82,9 +95,23 @@ print(radius)  # Gravitational radius in km
 ```
 
 ---
+### **Plot Styling**
+This is just a quick way to make good looking plots simply.
+```python
+import physkit as pk
+import matplotlib.pyplot as plt
 
+x_data = [...]  # Example data for x and y
+y_data = [...]
+
+fig, ax = plt.subplots()
+pk.plot_styler(x_data, y_data, ax=ax, title="test", 
+               ylabel="y label", xlabel="x label", loglog=True)
+plt.show()
+
+```
+---
 ### **Command Line Interface (CLI)**
-In terminal:
 ```bash
 physkit constant G --system cgs
 ```
@@ -97,6 +124,7 @@ physkit convert 1 m cm
 ## **Contributing**
 
 Contributions are welcome!  
+
 1. Fork the repository.  
 2. Create a new branch (`git checkout -b feature-name`).  
 3. Commit changes (`git commit -m "Add new feature"`).  
@@ -114,3 +142,4 @@ If you encounter any issues or have suggestions, feel free to open an issue on [
 ## **Contact**
 
 For inquiries, contact me via GitHub: [sapphimars](https://github.com/sapphimars)
+
