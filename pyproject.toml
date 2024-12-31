@@ -20,7 +20,7 @@ dependencies = [
     "pdm-backend>=2.4.3",
 ]
 
-version = "0.1.2"
+version = "0.1.3"
 
 [project.scripts]
 physkit = "physkit.cli:main"
@@ -34,3 +34,8 @@ build-backend = "pdm.backend"
 [tool.pdm]
 packages = [{ include = "physkit", from = "src" }]
 distribution = true
+
+[project.urls]
+"Homepage" = "https://github.com/sapphimars/physkit"
+"Repository" = "https://github.com/sapphimars/physkit"
+"Bug Tracker" = "https://github.com/sapphimars/physkit/issues"
