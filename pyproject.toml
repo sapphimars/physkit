@@ -20,7 +20,7 @@ dependencies = [
     "pdm-backend>=2.4.3",
 ]
 
-version = "0.1.5"
+version = "0.1.6"
 
 [project.optional-dependencies]
 dev = [

@@ -1,69 +1,61 @@
-name: Publish to TestPyPI and PyPI
+name: Publish to PyPI
 
 on:
   push:
     tags:
-      - 'v*' # Matches tags like v0.1.0, v1.0.0, etc.
+      - 'v*'
+
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
-  # Step 1: Publish to TestPyPI
-  test-publish:
-    name: Test Publish to TestPyPI
+  test:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - name: Install Python and PDM
+        uses: pdm-project/setup-pdm@v4
         with:
           python-version: "3.12"
-
-      - name: Install PDM
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install pdm
+          cache: true
 
       - name: Install Dependencies
         run: pdm install --dev
+
+      - name: Run Tests
+        run: pdm run pytest --tb=short
+
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Python and PDM
+        uses: pdm-project/setup-pdm@v4
+        with:
+          python-version: "3.12"
+          cache: true
 
       - name: Build Package
         run: pdm build
 
       - name: Publish to TestPyPI
+        if: github.event_name == 'push' && contains(github.ref, 'refs/tags')
         env:
-          PYPI_USERNAME: ${{ secrets.TEST_PYPI_USERNAME }}
-          PYPI_PASSWORD: ${{ secrets.TEST_PYPI_PASSWORD }}
-        run: pdm publish --repository testpypi --username $PYPI_USERNAME --password $PYPI_PASSWORD
-
-  # Step 2: Publish to PyPI (only if TestPyPI succeeded)
-  pypi-publish:
-    name: Publish to PyPI
-    runs-on: ubuntu-latest
-    needs: test-publish # Depends on TestPyPI job success
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.12"
-
-      - name: Install PDM
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install pdm
-
-      - name: Install Dependencies
-        run: pdm install --prod
-
-      - name: Build Package
-        run: pdm build
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
+        run: pdm publish --repository testpypi
 
       - name: Publish to PyPI
+        if: github.event_name == 'push' && contains(github.ref, 'refs/tags')
         env:
-          PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
-          PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-        run: pdm publish --repository pypi --username $PYPI_USERNAME --password $PYPI_PASSWORD
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: pdm publish
