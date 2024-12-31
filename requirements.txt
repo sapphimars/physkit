@@ -1,0 +1,2 @@
+matplotlib==3.10.0
+Pint==0.24.4

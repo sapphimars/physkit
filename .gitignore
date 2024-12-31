@@ -1,0 +1,25 @@
+# Byte-compiled / package files
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
+.venv/
+env/
+venv/
+ENV/
+
+# IDE and Editor files
+.vscode/
+.idea/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Testing cache
+.pytest_cache/
+.coverage
+
+.DS_Store
