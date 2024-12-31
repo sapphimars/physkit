@@ -24,6 +24,5 @@ build/
 
 .DS_Store
 .pdm-python
-pdm.lock
 Makefile
 make.bat
