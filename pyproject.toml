@@ -1,22 +1,11 @@
-[build-system]
-requires = [
-    "setuptools>=61.0",
-    "wheel",
-]
-build-backend = "setuptools.build_meta"
-
 [project]
 name = "physkit"
-version = "0.1.0"
 description = "A Python toolkit providing physical constants, unit conversions, and plotting styles"
 readme = "README.md"
-requires-python = ">=3.7"
-license = { file = "LICENSE" }
+requires-python = ">=3.12"
+license = { text = "GNU General Public License v3 (GPLv3)" }
 authors = [
-    { name="sapphimars" }
-]
-maintainers = [
-    { name="sapphimars" }
+    { name = "sapphimars" },
 ]
 keywords = ["physics", "units", "pint", "plotting"]
 classifiers = [
@@ -24,10 +13,20 @@ classifiers = [
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Operating System :: OS Independent"
 ]
+
 dependencies = [
     "pint>=0.24.4",
     "matplotlib>=3.10.0",
+    "pdm-backend>=2.4.3",
 ]
 
 [project.scripts]
 physkit = "physkit.cli:main"
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[tool.pdm]
+version = { source = "scm" }
+distribution = true

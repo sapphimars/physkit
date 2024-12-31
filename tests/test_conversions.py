@@ -19,7 +19,7 @@ def test_convert_unit_basic():
 def test_convert_unit_cgs():
     set_default("cgs")
     # 1 cm -> base units in cgs is still "cm"
-    val = convert_to_base_units(1, "cm")
+    val, _ = convert_to_base_units(1, "cm")
     assert math.isclose(val, 1.0, rel_tol=1e-9)
 
 

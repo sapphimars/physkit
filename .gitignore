@@ -23,3 +23,6 @@ build/
 .coverage
 
 .DS_Store
+.pdm-python
+src/
+pdm.lock
