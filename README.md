@@ -7,8 +7,11 @@
 **Physkit** is a Python library for performing scientific computations, unit conversions, and working with physical constants and equations.  
 It provides tools for astrophysical and physical calculations, supporting multiple unit systems and CLI functionalities.
 
+<figure> 
+  <img src="https://github.com/sapphimars/physkit/blob/main/assets/physkit_icon_wide.png?raw=true" alt="drawing" />
+</figure>
 
-<img src="https://github.com/sapphimars/physkit/blob/main/assets/physkit_icon_wide.png?raw=true" alt="drawing" />
+###### Icon created by [astroastra](https://github.com/astroastrastudio)
 
 ---
 
