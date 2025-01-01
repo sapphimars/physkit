@@ -31,7 +31,7 @@ from .plot_styler import plot_styler
 from .equations import equations
 
 
-__version__ = "0.1.16"
+__version__ = "0.1.17"
 
 __all__ = [
     "set_default",
