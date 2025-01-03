@@ -1,7 +1,7 @@
 [project]
 name = "physkit"
 description = "A Python toolkit providing physical constants, unit conversions, and plotting styles"
-readme = "README.md"
+readme = "README-pypi.md"
 requires-python = ">=3.12"
 license = { text = "GPL-3.0-or-later" }
 authors = [
