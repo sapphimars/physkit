@@ -1,17 +1,23 @@
-# Physkit - A Python toolkit for constants, unit conversions, and equations
-
 [![Build Status](https://github.com/sapphimars/physkit/actions/workflows/test.yml/badge.svg)](https://github.com/sapphimars/physkit/actions/workflows/test.yml)
 [![PyPI Version](https://img.shields.io/pypi/v/physkit)](https://pypi.org/project/physkit/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-**Physkit** is a Python library for performing scientific computations, unit conversions, and working with physical constants and equations.  
-It provides tools for astrophysical and physical calculations, supporting multiple unit systems and CLI functionalities.
+<div align="center">
+  <figure> 
+    <img src="https://github.com/sapphimars/physkit/blob/main/assets/physkit-logo-dark.png?raw=true#gh-dark-mode-only" alt="drawing" width=240 />
+  </figure>
 
-<figure> 
-  <img src="https://github.com/sapphimars/physkit/blob/main/assets/physkit_icon_wide.png?raw=true" alt="drawing" />
-</figure>
+  <figure> 
+    <img src="https://github.com/sapphimars/physkit/blob/main/assets/physkit-logo-light.png?raw=true#gh-light-mode-only" alt="drawing" width=240 />
+  </figure>
+</div>
 
 ###### Icon created by [astroastra](https://github.com/astroastrastudio)
+
+# Physkit - A Python toolkit for constants, unit conversions, and equations
+
+**Physkit** is a Python library for performing scientific computations, unit conversions, and working with physical constants and equations.  
+It provides tools for astrophysical and physical calculations, supporting multiple unit systems and CLI functionalities.
 
 ---
 
