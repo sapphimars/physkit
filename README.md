@@ -3,13 +3,11 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 <div align="center">
-  <figure> 
-    <img src="https://github.com/sapphimars/physkit/blob/main/assets/physkit-logo-dark.png?raw=true#gh-dark-mode-only" alt="drawing" width=240 />
-  </figure>
-
-  <figure> 
-    <img src="https://github.com/sapphimars/physkit/blob/main/assets/physkit-logo-light.png?raw=true#gh-light-mode-only" alt="drawing" width=240 />
-  </figure>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/sapphimars/physkit/blob/main/assets/physkit-logo-dark.png?raw=true">
+    <source media="(prefers-color-scheme: light)" srcset="https://github.com/sapphimars/physkit/blob/main/assets/physkit-logo-light.png?raw=true">
+    <img alt="Shows logo dependent on light mode or dark mode." src="https://user-images.githubusercontent.com/25423296/163456779-a8556205-d0a5-45e2-ac17-42d089e3c3f8.png" width=240>
+  </picture>
 </div>
 
 ###### Icon created by [astroastra](https://github.com/astroastrastudio)
