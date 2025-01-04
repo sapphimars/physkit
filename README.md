@@ -22,9 +22,9 @@ It provides tools for astrophysical and physical calculations, supporting multip
 ## **License**
 
 This project is licensed under the terms of the **GNU General Public License v3.0**.  
-See the [LICENSE](https://github.com/sapphimars/physkit/blob/main/LICENSE) file for details.  
+See the [LICENSE](https://github.com/sapphimars/physkit/blob/main/LICENSE) file for details.
 
-Copyright (C) 2024 [sapphimars](https://github.com/sapphimars)  
+Copyright (C) 2024 [sapphimars](https://github.com/sapphimars)
 
 ---
 
@@ -43,14 +43,15 @@ Note: Third-party libraries included in this project are licensed under their re
 
 ### **Requirements**
 
-- Python **3.12** or higher  
+- Python **3.12** or higher
 - Dependencies:
-  - **Matplotlib** >= 3.5  
-  - **Pint** >= 0.20  
+  - **Matplotlib** >= 3.5
+  - **Pint** >= 0.20
 
 ---
 
 ### **Install via pip**
+
 ```bash
 pip install physkit
 ```
@@ -58,11 +59,13 @@ pip install physkit
 ---
 
 ### **For Development**
+
 ```bash
 pdm install
 ```
 
 To install test dependencies:
+
 ```bash
 pdm install -G test
 ```
@@ -72,6 +75,7 @@ pdm install -G test
 ## **Usage Examples**
 
 ### **Access Constants**
+
 ```python
 import physkit as pk
 from physkit.constants import constants as csts
@@ -84,6 +88,7 @@ print(csts.G)  # Gravitational constant in CGS
 ---
 
 ### **Unit Conversion**
+
 ```python
 from physkit.conversions import convert_unit
 
@@ -94,6 +99,7 @@ print(result)  # Outputs: 100.0
 ---
 
 ### **Equations**
+
 ```python
 from physkit.equations import equations
 
@@ -104,8 +110,11 @@ print(radius)  # Gravitational radius in km
 ```
 
 ---
+
 ### **Plot Styling**
+
 This is just a quick way to make good looking plots simply.
+
 ```python
 import physkit as pk
 import matplotlib.pyplot as plt
@@ -114,16 +123,20 @@ x_data = [...]  # Example data for x and y
 y_data = [...]
 
 fig, ax = plt.subplots()
-pk.plot_styler(x_data, y_data, ax=ax, title="test", 
+pk.plot_styler(x_data, y_data, ax=ax, title="test",
                ylabel="y label", xlabel="x label", loglog=True)
 plt.show()
 
 ```
+
 ---
+
 ### **Command Line Interface (CLI)**
+
 ```bash
 physkit constant G --system cgs
 ```
+
 ```bash
 physkit convert 1 m cm
 ```
@@ -132,12 +145,12 @@ physkit convert 1 m cm
 
 ## **Contributing**
 
-Contributions are welcome!  
+Contributions are welcome!
 
-1. Fork the repository.  
-2. Create a new branch (`git checkout -b feature-name`).  
-3. Commit changes (`git commit -m "Add new feature"`).  
-4. Push to your branch (`git push origin feature-name`).  
+1. Fork the repository.
+2. Create a new branch (`git checkout -b feature-name`).
+3. Commit changes (`git commit -m "Add new feature"`).
+4. Push to your branch (`git push origin feature-name`).
 5. Open a Pull Request.
 
 ---
@@ -151,4 +164,3 @@ If you encounter any issues or have suggestions, feel free to open an issue on [
 ## **Contact**
 
 For inquiries, contact me via GitHub: [sapphimars](https://github.com/sapphimars)
-
