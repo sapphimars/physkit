@@ -122,3 +122,58 @@ def convert_unit_system(
     base_in_temp_system = new_qty_in_temp.to_base_units()
 
     return base_in_temp_system.magnitude, f"{base_in_temp_system.units:~}"
+
+
+class UnitConverter:
+    lengths = {
+        "meter": 1.0,
+        "inch": 0.0254,
+        "foot": 0.3048,
+        "yard": 0.9144,
+        "mile": 1609.34,
+        "eV^-1": 1.97327e-7,
+    }
+    masses = {
+        "gram": 1.0,
+        "pound": 453.59,
+        "ounce": 28.35,
+        "solar_mass": 1.98847e33,
+        "eV": 1.78266192e-33,
+    }
+    times = {
+        "second": 1.0,
+        "minute": 60.0,
+        "hour": 3600.0,
+        "eV^-1": 6.582119e-16,
+    }
+    energies = {
+        "joule": 1.0,
+        "calorie": 4.184,
+        "watt-hour": 3.6e9,
+        "BTU": 1055,
+        "eV": 1.602176634e-19,
+    }
+
+    @classmethod
+    def convert_length(cls, value: float, from_unit: str, to_unit: str) -> float:
+        base_value = value * cls.lengths[from_unit]
+        converted = base_value / cls.lengths[to_unit]
+        return converted
+
+    @classmethod
+    def convert_mass(cls, value: float, from_unit: str, to_unit: str) -> float:
+        base_value = value * cls.masses[from_unit]
+        converted = base_value / cls.masses[to_unit]
+        return converted
+
+    @classmethod
+    def convert_time(cls, value: float, from_unit: str, to_unit: str) -> float:
+        base_value = value * cls.times[from_unit]
+        converted = base_value / cls.times[to_unit]
+        return converted
+
+    @classmethod
+    def convert_energy(cls, value: float, from_unit: str, to_unit: str) -> float:
+        base_value = value * cls.energy[from_unit]
+        converted = base_value / cls.energy[to_unit]
+        return converted
