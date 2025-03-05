@@ -32,7 +32,7 @@ all conversions. The user never interacts with Pint objects.
 import re
 import pint
 from collections import defaultdict
-from .config import get_ureg  # , set_default
+from .config import get_ureg, set_default
 from .constants import constants
 
 
@@ -285,9 +285,10 @@ class UnitConverter:
     def add_natural_units(self):
         """Add units related to natural constants and physics"""
         # Natural constants (values from scipy.constants)
-        c = 299792458.0  # Speed of light (m/s)
-        h_bar = 1.054571817e-34  # Reduced Planck constant (J·s)
-        eV = 1.602176634e-19  # 1 eV in joules
+        set_default("SI")
+        c = constants.c[0]  # Speed of light (m/s)
+        h_bar = constants.h_bar[0]  # Reduced Planck constant (J·s)
+        eV = constants.eV[0]  # 1 eV in joules
 
         # Speed of light
         self.add_unit("speed_of_light", f"{c} m/s", aliases=["c"])
@@ -516,11 +517,11 @@ class UnitConverter:
 
 
 # Access natural constants (first element of tuple is the magnitude)
-SPEED_OF_LIGHT = constants.c[0]  # c, m/s
-PLANCK_CONSTANT = constants.h[0]  # h, J·s
-REDUCED_PLANCK = constants.h_bar[0]  # ħ, J·s
-BOLTZMANN_CONSTANT = constants.k_b[0]  # k_B, J/K
-ELEMENTARY_CHARGE = constants.e[0]  # e, C
+# SPEED_OF_LIGHT = constants.c[0]  # c, m/s
+# PLANCK_CONSTANT = constants.h[0]  # h, J·s
+# REDUCED_PLANCK = constants.h_bar[0]  # ħ, J·s
+# BOLTZMANN_CONSTANT = constants.k_b[0]  # k_B, J/K
+# ELEMENTARY_CHARGE = constants.e[0]  # e, C
 
 # unit_converter = UnitConverter()
 # No need to define joule here - already defined in class-level compound_units
