@@ -32,6 +32,7 @@ all conversions. The user never interacts with Pint objects.
 import re
 import pint
 from collections import defaultdict
+import warnings
 from .config import get_ureg, set_default
 from .constants import constants
 
@@ -211,6 +212,11 @@ class UnitConverter:
         self.add_unit("sievert", "m^2 s^-2", aliases=["Sv"])
         self.add_unit("abampere", "10 ampere", aliases=["abA"])
         self.add_unit("statampere", "3.336e-10 ampere", aliases=["statA"])
+        self.add_unit(
+            "statcoulomb",
+            "3.33564e-10 coulomb",
+            aliases=["statC", "franklin", "Franklin", "Fr", "esu"],
+        )
         self.add_unit("biot", "10 ampere", aliases=["Bi"])
 
         # Astronomy units
@@ -289,21 +295,27 @@ class UnitConverter:
         c = constants.c[0]  # Speed of light (m/s)
         h_bar = constants.h_bar[0]  # Reduced Planck constant (J·s)
         eV = constants.eV[0]  # 1 eV in joules
+        k_b = constants.k_b[0]  # Boltzmann constant (J/K)
 
         # Speed of light
         self.add_unit("speed_of_light", f"{c} m/s", aliases=["c"])
 
         # Natural units system
         self.add_unit("electronvolt", f"{eV} joule", aliases=["eV"])
-        self.add_unit("electronvolt_mass", f"{eV/c**2} kg", aliases=["eV/c^2", "eV/c²"])
 
         self.add_unit(
-            "electronvolt_length", f"{h_bar*c/eV} m", aliases=["eV^-1_length", "ħc/eV"]
+            "electronvolt_mass", f"{eV / c**2} kg", aliases=["eV/c^2", "eV/c²"]
         )
 
+        self.add_unit("electronvolt_momentum", f"{eV / c} kg*m/s", aliases=["eV/c"])
+
+        self.add_unit("electronvolt_length", f"{h_bar * c / eV} m", aliases=["ħc/eV"])
+
         self.add_unit(
-            "electronvolt_time", f"{h_bar/eV} s", aliases=["eV^-1_time", "ħ/eV"]
+            "electronvolt_time", f"{h_bar / eV} s", aliases=["eV^-1_time", "ħ/eV"]
         )
+
+        self.add_unit("electronvolt_temperature", f"{eV / k_b} K", aliases=["eV/k"])
 
     def add_unit(self, name, definition, aliases=None):
         if name in self.unit_registry:
@@ -491,6 +503,48 @@ class UnitConverter:
 
         if from_dim != to_dim:
             raise ValueError(f"Incompatible dimensions: {from_dim} vs {to_dim}")
+
+        return value * from_factor / to_factor
+
+    def nat_convert(self, value, from_unit):
+        """
+        Convert to natural units. This is a specialized conversion.
+
+        Args:
+            value: _description_
+            from_unit: _description_
+        """
+        from_factor, from_dim = self._get_unit_info(from_unit)
+        from_dim = self._clean_dimensions(from_dim)
+
+        to_factor = 1.0
+
+        for dim, exp in from_dim.items():
+            if dim == "mass":
+                to_factor *= self.unit_registry["electronvolt_mass"]["factor"] ** exp
+
+            elif dim == "length":
+                to_factor *= self.unit_registry["electronvolt_length"]["factor"] ** exp
+
+            elif dim == "time":
+                to_factor *= self.unit_registry["electronvolt_time"]["factor"] ** exp
+
+            elif dim == "temperature":
+                to_factor *= (
+                    self.unit_registry["electronvolt_temperature"]["factor"] ** exp
+                )
+
+            elif dim == "momentum":
+                to_factor *= (
+                    self.unit_registry["electronvolt_momentum"]["factor"] ** exp
+                )
+
+            elif dim == "energy":
+                to_factor *= self.unit_registry["electronvolt"]["factor"] ** exp
+
+            else:
+                to_factor *= 1.0
+                warnings.warn(f"Dimension {dim} not handled in natural conversion.")
 
         return value * from_factor / to_factor
 

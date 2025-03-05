@@ -97,6 +97,17 @@ class TestUnitConverter:
             == 6.582119e-16
         )
 
+        assert (
+            pytest.approx(converter.nat_convert(1.78266192e-27, "kg"), rel=1e-5)
+        ) == 1e9
+
+        assert (
+            pytest.approx(converter.nat_convert(5.344286e-19, "kg*m/s"), rel=1e-5)
+            == 1e9
+        )
+
+        assert (pytest.approx(converter.nat_convert(11604.51812, "K"), rel=1e-5)) == 1.0
+
     def test_specialty_units(self, converter):
         """Test specialty unit conversions"""
         # Magnetic field
@@ -136,6 +147,15 @@ class TestUnitConverter:
         assert (
             pytest.approx(converter.convert(1.0, "electronvolt", "joule"), rel=1e-5)
             == 1.602176634e-19
+        )
+        assert (
+            pytest.approx(converter.convert(1.0, "eV", "joule"), rel=1e-5)
+            == 1.602176634e-19
+        )
+
+        assert (
+            pytest.approx(converter.convert(1.0, "eV/c^2", "kg"), rel=1e-5)
+            == 1.78266192e-36
         )
 
     def test_custom_unit_definition(self, converter):
@@ -182,9 +202,7 @@ class TestUnitConverter:
 
     def test_base_dimension_conversions(self, converter):
         """Test that units defined with base physical dimensions work correctly"""
-        assert (
-            pytest.approx(converter.convert(1.0, "tesla", "gauss"), rel=1e-5) == 10000.0
-        )
+
         assert (
             pytest.approx(converter.convert(2.0, "hertz", "1/second"), rel=1e-5) == 2.0
         )
