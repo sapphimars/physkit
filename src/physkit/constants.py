@@ -58,6 +58,13 @@ class Constants:
         converted = val.to_base_units()
         return converted.magnitude, f"{converted.units:~}"
 
+    @property
+    def eV(self):
+        # Electronvolt eV
+        val = 1.602176634e-19 * get_ureg()("J")
+        converted = val.to_base_units()
+        return converted.magnitude, f"{converted.units:~}"
+
     ##########################################################################
     #  ELECTROMAGNETIC CONSTANTS
     ##########################################################################

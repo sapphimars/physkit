@@ -31,6 +31,7 @@ all conversions. The user never interacts with Pint objects.
 
 import re
 import pint
+from collections import defaultdict
 from .config import get_ureg  # , set_default
 from .constants import constants
 
@@ -127,756 +128,391 @@ def convert_unit_system(
 
 
 class UnitConverter:
-    # Base conversion dictionaries
-    lengths = {
-        "meter": 1.0,
-        "inch": 0.0254,
-        "foot": 0.3048,
-        "cm": 0.01,
-        "mile": 1609.34,
-        "yard": 0.9144,
-        "angstrom": 1e-10,
-        "eV^-1": 1.97327e-7,
-    }
-    masses = {
-        "gram": 1.0,
-        "kg": 1000.0,
-        "pound": 453.59,
-        "ounce": 28.35,
-        "solar_mass": 1.98847e33,
-        "eV": 1.78266192e-33,
-    }
-    times = {
-        "second": 1.0,
-        "minute": 60.0,
-        "hour": 3600.0,
-        "day": 86400.0,
-        "year": 31536000.0,
-        "eV^-1": 6.582119e-16,
-    }
-    energies = {
-        "joule": 1.0,
-        "calorie": 4.184,
-        "watt-hour": 3600.0,
-        "BTU": 1055.0,
-        "erg": 1e-7,
-        "eV": 1.602176634e-19,
-    }
+    def __init__(self):
+        self.base_dimensions = {"length", "mass", "time", "current", "temperature"}
+        self.base_dimension_map = {}  # {"length": "meter", "mass": "gram"...}
+        self.si_prefixes = self._create_si_prefixes()
+        self.unit_registry = {}
+        self.aliases = {}
+        self._initialize_base_units()
+        self._initialize_compound_units()
 
-    # Custom compound units defined in terms of base units
-    compound_units = {
-        "hertz": {
-            "definition": "1/second",
-            "dimension": "frequency",
-            "conversion_factor": 1.0,  # In terms of 1/second
-        },
-        "watt": {
-            "definition": "joule/second",
-            "dimension": "energy/time",
-            "conversion_factor": 1.0,  # In terms of joule/second
-        },
-    }
-
-    # Unit aliases - maps alternative forms to canonical form
-    unit_aliases = {
-        # Length
-        "m": "meter",
-        "meters": "meter",
-        "metre": "meter",
-        "metres": "meter",
-        "in": "inch",
-        "inches": "inch",
-        "ft": "foot",
-        "feet": "foot",
-        "yd": "yard",
-        "yards": "yard",
-        "mi": "mile",
-        "miles": "mile",
-        "centimeter": "cm",
-        "centimeters": "cm",
-        "centimetre": "cm",
-        "centimetres": "cm",
-        "Å": "angstrom",
-        "Angstrom": "angstrom",
-        "angstroms": "angstrom",
-        # Mass
-        "g": "gram",
-        "grams": "gram",
-        "gramme": "gram",
-        "grammes": "gram",
-        "kilogram": "kg",
-        "kilograms": "kg",
-        "kilogramme": "kg",
-        "kilogrammes": "kg",
-        "lb": "pound",
-        "pounds": "pound",
-        "lbs": "pound",
-        "oz": "ounce",
-        "ounces": "ounce",
-        "solar mass": "solar_mass",
-        "M_sun": "solar_mass",
-        "M☉": "solar_mass",
-        # Time
-        "s": "second",
-        "seconds": "second",
-        "sec": "second",
-        "min": "minute",
-        "minutes": "minute",
-        "h": "hour",
-        "hours": "hour",
-        "hr": "hour",
-        "hrs": "hour",
-        "d": "day",
-        "days": "day",
-        "yr": "year",
-        "years": "year",
-        "y": "year",
-        # Energy
-        "J": "joule",
-        "joules": "joule",
-        "cal": "calorie",
-        "calories": "calorie",
-        "Wh": "watt-hour",
-        "watt hours": "watt-hour",
-        "electron volt": "eV",
-        "electronvolt": "eV",
-        "electron-volt": "eV",
-        "electronvolts": "eV",
-        "electron volts": "eV",
-        "electron-volts": "eV",
-        # Compound units
-        "Hz": "hertz",
-        "hz": "hertz",
-        "Hertz": "hertz",
-        "W": "watt",
-        "watts": "watt",
-        "Watt": "watt",
-        "Watts": "watt",
-        "Jy": "jansky",
-        "jy": "jansky",
-        "Jansky": "jansky",
-        "janskys": "jansky",
-        "Janskys": "jansky",
-    }
-
-    # SI prefixes and their multipliers - both symbol and full word forms
-    si_prefixes = {
-        # Sub-units - symbols
-        "y": 1e-24,  # yocto
-        "z": 1e-21,  # zepto
-        "a": 1e-18,  # atto
-        "f": 1e-15,  # femto
-        "p": 1e-12,  # pico
-        "n": 1e-9,  # nano
-        "μ": 1e-6,  # micro (also support u as alias for micro)
-        "u": 1e-6,  # micro (ascii version)
-        "m": 1e-3,  # milli
-        "c": 1e-2,  # centi
-        "d": 1e-1,  # deci
-        # Sub-units - full words
-        "yocto": 1e-24,
-        "zepto": 1e-21,
-        "atto": 1e-18,
-        "femto": 1e-15,
-        "pico": 1e-12,
-        "nano": 1e-9,
-        "micro": 1e-6,
-        "milli": 1e-3,
-        "centi": 1e-2,
-        "deci": 1e-1,
-        # Super-units - symbols
-        "da": 1e1,  # deca
-        "h": 1e2,  # hecto
-        "k": 1e3,  # kilo
-        "M": 1e6,  # mega
-        "G": 1e9,  # giga
-        "T": 1e12,  # tera
-        "P": 1e15,  # peta
-        "E": 1e18,  # exa
-        "Z": 1e21,  # zetta
-        "Y": 1e24,  # yotta
-        # Super-units - full words
-        "deca": 1e1,
-        "hecto": 1e2,
-        "kilo": 1e3,
-        "mega": 1e6,
-        "giga": 1e9,
-        "tera": 1e12,
-        "peta": 1e15,
-        "exa": 1e18,
-        "zetta": 1e21,
-        "yotta": 1e24,
-    }
-
-    # Set of base units that accept SI prefixes
-    prefix_compatible_units = {
-        # Base units
-        "meter",
-        "gram",
-        "second",
-        "joule",
-        "watt-hour",
-        "eV",
-        "m",
-        "g",
-        "s",
-        "J",
-        "Wh",
-        # Derived units that can take prefixes
-        "hertz",
-        "Hz",
-        "watt",
-        "W",
-        "jansky",
-        "Jy",
-    }
-
-    # Regular expressions for parsing units
-    unit_regex = re.compile(r"([a-zA-Z_μ]+)(\^-?\d+)?")
-    # Updated prefix regex to match full word prefixes too
-    prefix_regex = re.compile(
-        r"(yocto|zepto|atto|femto|pico|nano|micro|milli|centi|deci|deca|hecto|kilo|mega|giga|tera|peta|exa|zetta|yotta|[yzafpnμumcdhkMGTPEZY])?([a-zA-Z_]+)"
-    )
-    compound_regex = re.compile(r"([^*/^]+)(?:\^(-?\d+))?")
-
-    dimensions = {
-        "energy": {"joule", "calorie", "eV", "erg", "BTU", "watt-hour"},
-        "length": {"meter", "inch", "foot", "cm", "mile", "yard", "angstrom", "eV^-1"},
-        "time": {"second", "minute", "hour", "day", "year", "eV^-1"},
-        "mass": {"gram", "kg", "pound", "ounce", "solar_mass", "eV"},
-        "frequency": {"hertz"},
-        "energy/time": {"watt"},
-        "magnetic_flux_density": {"tesla"},
-        "radioactivity": {"becquerel", "curie"},
-        "area": {"barn"},
-        "exposure": {"roentgen"},
-        "pressure": {"pascal"},
-        "volume_flow_rate": {"cubic_meter_per_second"},
-        "mass_flow_rate": {"kilogram_per_second"},
-        "temperature": {"kelvin"},
-        "force": {"newton"},
-        "velocity": {"speed_of_light"},
-    }
-
-    @classmethod
-    def add_unit_alias(cls, alias, canonical_form):
-        """
-        Add a new unit alias to the system.
-
-        Args:
-            alias (str): The alias/alternative form
-            canonical_form (str): The canonical form this maps to
-        """
-        cls.unit_aliases[alias] = canonical_form
-
-    @classmethod
-    def add_compound_unit(
-        cls, name, definition, dimension, conversion_factor=1.0, aliases=None
-    ):
-        """
-        Add a new compound unit definition.
-
-        CURRENTLY BROKEN FOR SOME UNITS WHERE THE CONVERSION FACTOR IS NECESSARY
-        AND OTHERS WHERE CONVERSION FACTOR BREAKS THINGS. FIX!!!
-
-        Args:
-            name (str): Canonical name of the unit
-            definition (str): Definition in terms of other units (e.g., "joule/second")
-            dimension (str): Physical dimension description (e.g., "energy/time")
-            conversion_factor (float): Conversion factor to base SI units
-            aliases (list): Optional list of aliases for this unit
-        """
-        # Add the compound unit definition
-        cls.compound_units[name] = {
-            "definition": definition,
-            "dimension": dimension,
-            "conversion_factor": conversion_factor,
+    def _create_si_prefixes(self):
+        prefixes = {
+            # SI prefixes (both symbols and names)
+            "y": 1e-24,
+            "yocto": 1e-24,
+            "z": 1e-21,
+            "zepto": 1e-21,
+            "a": 1e-18,
+            "atto": 1e-18,
+            "f": 1e-15,
+            "femto": 1e-15,
+            "p": 1e-12,
+            "pico": 1e-12,
+            "n": 1e-9,
+            "nano": 1e-9,
+            "μ": 1e-6,
+            "u": 1e-6,
+            "micro": 1e-6,
+            "m": 1e-3,
+            "milli": 1e-3,
+            "c": 1e-2,
+            "centi": 1e-2,
+            "d": 1e-1,
+            "deci": 1e-1,
+            "da": 1e1,
+            "deca": 1e1,
+            "h": 1e2,
+            "hecto": 1e2,
+            "k": 1e3,
+            "kilo": 1e3,
+            "M": 1e6,
+            "mega": 1e6,
+            "G": 1e9,
+            "giga": 1e9,
+            "T": 1e12,
+            "tera": 1e12,
+            "P": 1e15,
+            "peta": 1e15,
+            "E": 1e18,
+            "exa": 1e18,
+            "Z": 1e21,
+            "zetta": 1e21,
+            "Y": 1e24,
+            "yotta": 1e24,
         }
+        self._sorted_prefixes = sorted(prefixes.keys(), key=lambda x: -len(x))
+        return prefixes
 
-        # Add dimension if it doesn't exist
-        if dimension not in cls.dimensions:
-            cls.dimensions[dimension] = {name}
-        else:
-            cls.dimensions[dimension].add(name)
+    def _initialize_base_units(self):
+        # Base units
+        self._add_base_unit("meter", ["length"], 1.0, ["m", "metre", "metres"])
+        self._add_base_unit("gram", ["mass"], 1.0, ["g"])
+        self._add_base_unit("second", ["time"], 1.0, ["s", "sec"])
+        self._add_base_unit("ampere", ["current"], 1.0, ["A", "amp"])
+        self._add_base_unit("kelvin", ["temperature"], 1.0, ["K"])
 
-        # Add any aliases
-        if aliases is not None:
-            for alias in aliases:
-                cls.add_unit_alias(alias, name)
+    def _initialize_compound_units(self):
+        # Predefined compound units
+        self.add_unit("inch", "0.0254 meter", aliases=["in"])
+        self.add_unit("mile", "1609.34 meter", aliases=["mi"])
+        self.add_unit("foot", "0.3048 meter", aliases=["ft", "feet"])
+        self.add_unit("pound", "453.592 g", aliases=["lb", "lbs", "Lb"])
+        self.add_unit("hour", "3600 second", aliases=["hr"])
 
-    @classmethod
-    def normalize_unit(cls, unit_str):
-        """
-        Convert unit to canonical form, handling aliases and prefixes.
+        # Add physics units
+        self.add_unit("newton", "kg*m/s^2", aliases=["N"])
+        self.add_unit("joule", "newton*meter", aliases=["J"])
+        self.add_unit("watt", "joule/second", aliases=["W"])
+        self.add_unit("coulomb", "ampere*second", aliases=["C"])
+        self.add_unit("hertz", "second^-1", aliases=["Hz"])
+        self.add_unit("tesla", "kg/s^2/A", aliases=["T"])
+        self.add_unit("sievert", "m^2 s^-2", aliases=["Sv"])
+        self.add_unit("abampere", "10 ampere", aliases=["abA"])
+        self.add_unit("statampere", "3.336e-10 ampere", aliases=["statA"])
+        self.add_unit("biot", "10 ampere", aliases=["Bi"])
 
-        Args:
-            unit_str (str): Unit string like "km" or "microsec"
+        # Astronomy units
+        self.add_unit("parsec", "3.0857e16 meter", aliases=["pc"])
+        self.add_unit("light_year", "9.461e15 meter", aliases=["ly"])
+        self.add_unit("astronomical_unit", "1.496e11 meter", aliases=["au"])
 
-        Returns:
-            tuple: (canonical_unit, multiplier)
-        """
-        # Check if it's a simple alias
-        if unit_str in cls.unit_aliases:
-            return cls.unit_aliases[unit_str], 1.0
+        # Radiation units
+        self.add_unit("becquerel", "1/second", aliases=["Bq"])
+        self.add_unit("curie", "3.7e10 becquerel", aliases=["Ci"])
+        self.add_unit("gray", "joule/kilogram", aliases=["Gy"])
+        self.add_unit("rad", "0.01 gray", aliases=["rd"])
 
-        # Check if it's a defined compound unit
-        if unit_str in cls.compound_units:
-            return unit_str, cls.compound_units[unit_str]["conversion_factor"]
+        # Pressure units
+        self.add_unit("pascal", "newton/meter^2", aliases=["Pa"])
+        self.add_unit("bar", "1e5 pascal", aliases=["bar"])
+        self.add_unit("atmosphere", "101325 pascal", aliases=["atm"])
+        self.add_unit("torr", "133.322 pascal", aliases=["mmHg"])
+        self.add_unit("psi", "6894.76 pascal", aliases=["lb/in^2"])
 
-        # Check for prefix
-        prefix_match = cls.prefix_regex.match(unit_str)
-        if prefix_match:
-            prefix, base_unit = prefix_match.groups()
+        # Radiation units
+        self.add_unit("roentgen", "2.58e-4 coulomb/kg", aliases=["R"])
 
-            # If base unit is an alias, convert to canonical form
-            if base_unit in cls.unit_aliases:
-                base_unit = cls.unit_aliases[base_unit]
-
-            # If this unit can take a prefix and we have a prefix
-            if base_unit in cls.prefix_compatible_units and prefix:
-                if prefix in cls.si_prefixes:
-                    return base_unit, cls.si_prefixes[prefix]
-
-            # If it's a valid base unit with no prefix
-            if base_unit in cls.unit_aliases:
-                return cls.unit_aliases[base_unit], 1.0
-
-        # If no match, return as is (might be a compound unit or unknown)
-        return unit_str, 1.0
-
-    @classmethod
-    def parse_compound_unit(cls, unit_str):
-        # Check if this is a predefined compound unit
-        if unit_str in cls.compound_units:
-            # Use the definition to expand it
-            definition = cls.compound_units[unit_str]["definition"]
-            conversion_factor = cls.compound_units[unit_str]["conversion_factor"]
-
-            # Parse the definition - but skip the compound unit check to avoid recursion
-            parts, def_multiplier = cls._parse_compound_unit_internal(definition)
-            return parts, def_multiplier * conversion_factor
-
-        # Otherwise parse it directly
-        return cls._parse_compound_unit_internal(unit_str)
-
-    @classmethod
-    def _parse_compound_unit_internal(cls, unit_str):
-        parts = {"numerator": {}, "denominator": {}}
-        multiplier = 1.0
-
-        # Split on division
-        if "/" in unit_str:
-            num_str, denom_str = unit_str.split("/", 1)
-
-            # Handle numerator
-            for unit_part in num_str.split("*"):
-                unit_part = unit_part.strip()
-                if not unit_part:
-                    continue
-
-                # Check for numeric coefficient at the start
-                coef_match = re.match(r"^(\d+\.?\d*[eE]?[-+]?\d*)(.+)$", unit_part)
-                if coef_match:
-                    coef_str, unit_part = coef_match.groups()
-                    multiplier *= float(coef_str)
-
-                power_match = re.search(r"(\^-?\d+)$", unit_part)
-                if power_match:
-                    base_unit = unit_part[: power_match.start()]
-                    power = int(power_match.group(0)[1:])
-                else:
-                    base_unit = unit_part
-                    power = 1
-
-                # Normalize the base unit and get any prefix multiplier
-                base_unit, prefix_mult = cls.normalize_unit(base_unit)
-                multiplier *= prefix_mult**power
-
-                # Add to numerator
-                if base_unit in parts["numerator"]:
-                    parts["numerator"][base_unit] += power
-                else:
-                    parts["numerator"][base_unit] = power
-
-            # Handle multiple denominators (e.g., meter/second/hour)
-            for denom_part in denom_str.split("/"):
-                denom_part = denom_part.strip()
-                if not denom_part:
-                    continue
-
-                # Check for numeric coefficient at the start
-                coef_match = re.match(r"^(\d+\.?\d*[eE]?[-+]?\d*)(.+)$", denom_part)
-                if coef_match:
-                    coef_str, denom_part = coef_match.groups()
-                    multiplier /= float(coef_str)
-
-                power_match = re.search(r"(\^-?\d+)$", denom_part)
-                if power_match:
-                    base_unit = denom_part[: power_match.start()]
-                    power = int(power_match.group(0)[1:])
-                else:
-                    base_unit = denom_part
-                    power = 1
-
-                # Normalize the base unit and get any prefix multiplier
-                base_unit, prefix_mult = cls.normalize_unit(base_unit)
-                multiplier /= prefix_mult**power
-
-                # Add to denominator
-                if base_unit in parts["denominator"]:
-                    parts["denominator"][base_unit] += power
-                else:
-                    parts["denominator"][base_unit] = power
-        else:
-            # Handle numerator only expressions (e.g., "joule*meter^2")
-            for unit_part in unit_str.split("*"):
-                unit_part = unit_part.strip()
-                if not unit_part:
-                    continue
-
-                # Check for numeric coefficient at the start
-                coef_match = re.match(r"^(\d+\.?\d*[eE]?[-+]?\d*)(.+)$", unit_part)
-                if coef_match:
-                    coef_str, unit_part = coef_match.groups()
-                    multiplier *= float(coef_str)
-
-                power_match = re.search(r"(\^-?\d+)$", unit_part)
-                if power_match:
-                    base_unit = unit_part[: power_match.start()]
-                    power = int(power_match.group(0)[1:])
-                else:
-                    base_unit = unit_part
-                    power = 1
-
-                # Normalize the base unit and get any prefix multiplier
-                base_unit, prefix_mult = cls.normalize_unit(base_unit)
-                multiplier *= prefix_mult**power
-
-                # Add to numerator
-                if base_unit in parts["numerator"]:
-                    parts["numerator"][base_unit] += power
-                else:
-                    parts["numerator"][base_unit] = power
-
-        return parts, multiplier
-
-    @classmethod
-    def get_unit_dimension(cls, unit):
-        # Special cases for complex natural units
-        if unit in ["c", "speed_of_light"]:
-            return "velocity"
-
-        if unit in ["eV/c^2", "eV/c²", "electronvolt_mass"]:
-            return "mass"
-
-        if unit in ["ħc/eV", "ħ*c/eV", "hbar*c/eV", "eV^-1_length"]:
-            return "length"
-
-        if unit in ["ħ/eV", "hbar/eV", "eV^-1_time"]:
-            return "time"
-
-        # For named units like pascal, newton
-        if unit in cls.compound_units:
-            return cls.compound_units[unit]["dimension"]
-
-        # Remove any power notation for lookup
-        base_unit = unit.split("^")[0].strip()
-
-        # Normalize unit name
-        canonical_unit, _ = cls.normalize_unit(base_unit)
-
-        # If it's a compound unit, return its dimension
-        if canonical_unit in cls.compound_units:
-            return cls.compound_units[canonical_unit]["dimension"]
-
-        # Otherwise check all dimension categories
-        for dim, units in cls.dimensions.items():
-            if canonical_unit in units:
-                return dim
-
-        raise ValueError(
-            f"Unknown dimension for unit: {unit} (canonical: {canonical_unit})"
+        # Flow rates
+        self.add_unit("cubic_meter_per_second", "m^3/s", aliases=["m³/s"])
+        self.add_unit(
+            "liter_per_second", "0.001 cubic_meter_per_second", aliases=["L/s"]
+        )
+        self.add_unit(
+            "gallon_per_minute", "6.30902e-5 cubic_meter_per_second", aliases=["gpm"]
         )
 
-    @classmethod
-    def convert_simple_unit(cls, value, from_unit, to_unit):
-        # Strip any leading/trailing whitespace
-        from_unit = from_unit.strip()
-        to_unit = to_unit.strip()
+        # Energy rates
+        self.add_unit("btu_per_hour", "0.293071 watt", aliases=["BTU/h"])
+        self.add_unit("ton_of_refrigeration", "3516.85 watt", aliases=["TR"])
 
-        # Normalize units and get prefix multipliers
-        from_canonical, from_multiplier = cls.normalize_unit(from_unit)
-        to_canonical, to_multiplier = cls.normalize_unit(to_unit)
+        # Special units
+        self.add_unit("jansky", "1e-26 watt/meter^2/hertz)", aliases=["Jy"])
+        self.add_unit("gauss", "1e-4 tesla", aliases=["G"])
+        self.add_unit("calorie", "4.184 joule", aliases=["cal"])
 
-        # Get the dimension for both units to ensure compatibility
-        from_dim = cls.get_unit_dimension(from_canonical)
-        to_dim = cls.get_unit_dimension(to_canonical)
+        # Nuclear
+        self.add_unit("barn", "1e-28 meter^2", aliases=["b"])
+        self.add_unit("rem", "0.01 sievert", aliases=["rem"])  # Dose equivalent
+
+        # Natural units
+        self.add_natural_units()
+
+    def _add_base_unit(self, name, dimensions, factor, aliases=None):
+        if len(dimensions) != 1:
+            raise ValueError("Base units must have exactly one dimension")
+        dimension = self._create_dimension_dict(dimensions)
+
+        # base_dim = dimension.split("^")[0] if "^" in dimension else dimension
+        # self.base_dimension_map[base_dim] = name
+        for dim in dimensions:
+            if "^" in dim:
+                base_dim = dim.split("^")[0]  # Handle "length^2" cases
+            else:
+                base_dim = dim
+            self.base_dimension_map[base_dim] = name
+
+        self.unit_registry[name] = {
+            "factor": factor,
+            "dimension": dimension,
+            "is_base": True,
+        }
+        if aliases:
+            for alias in aliases:
+                self.aliases[alias] = name
+
+    def add_natural_units(self):
+        """Add units related to natural constants and physics"""
+        # Natural constants (values from scipy.constants)
+        c = 299792458.0  # Speed of light (m/s)
+        h_bar = 1.054571817e-34  # Reduced Planck constant (J·s)
+        eV = 1.602176634e-19  # 1 eV in joules
+
+        # Speed of light
+        self.add_unit("speed_of_light", f"{c} m/s", aliases=["c"])
+
+        # Natural units system
+        self.add_unit("electronvolt", f"{eV} joule", aliases=["eV"])
+        self.add_unit("electronvolt_mass", f"{eV/c**2} kg", aliases=["eV/c^2", "eV/c²"])
+
+        self.add_unit(
+            "electronvolt_length", f"{h_bar*c/eV} m", aliases=["eV^-1_length", "ħc/eV"]
+        )
+
+        self.add_unit(
+            "electronvolt_time", f"{h_bar/eV} s", aliases=["eV^-1_time", "ħ/eV"]
+        )
+
+    def add_unit(self, name, definition, aliases=None):
+        if name in self.unit_registry:
+            raise ValueError(f"Unit {name} already exists")
+        if any(a in self.aliases for a in aliases or []):
+            conflicts = [a for a in aliases if a in self.aliases]
+            raise ValueError(f"Aliases {conflicts} already registered")
+
+        factor, components = self.parse_definition(definition)
+
+        self.unit_registry[name] = {
+            "factor": factor,
+            "dimension": components,
+            "is_base": False,
+        }
+
+        if aliases:
+            for alias in aliases:
+                self.aliases[alias] = name
+
+    def parse_definition(self, definition):
+        # Convert implicit multiplication (spaces) to explicit *
+        definition = self._resolve_aliases_in_definition(definition)
+        definition = definition.replace(" ", "*")
+
+        factor = 1.0
+        components = defaultdict(float)
+
+        # Split into tokens by * and /
+        tokens = re.split(
+            r"(\*|/)", definition.replace("(", "").replace(")", "").strip()
+        )
+
+        current_operation = "*"  # initial operation is multiplication
+
+        i = 0
+        while i < len(tokens):
+            token = tokens[i].strip()
+            if not token:
+                i += 1
+                continue
+
+            if token in ("*", "/"):
+                current_operation = token
+                i += 1
+                continue
+
+            # Handle each term (could have exponent)
+            term = token
+
+            # Split into unit and exponent part
+            if "^" in term:
+                unit_part, exp_part = term.split("^", 1)
+                try:
+                    exp = float(exp_part)
+                except ValueError:
+                    raise ValueError(f"Invalid exponent in term '{term}'")
+            else:
+                unit_part = term
+                exp = 1.0
+
+            # Apply current operation to exponent
+            if current_operation == "/":
+                exp = -exp
+
+            # Reset current operation to * for next term
+            current_operation = "*"
+
+            # Extract numerical coefficient from unit_part
+            coef = 1.0
+            coef_match = re.match(r"^([+-]?\d+\.?\d*([eE][+-]?\d+)?)", unit_part)
+            if coef_match:
+                coef_str = coef_match.group(1)
+                coef = float(coef_str)
+                unit_part = unit_part[len(coef_str) :].strip()
+
+            # Handle pure numerical terms (no unit)
+            if not unit_part:
+                factor *= coef**exp
+                i += 1
+                continue
+
+            # Split prefix and base unit
+            prefix, base = self.split_prefix(unit_part)
+
+            # Check if base unit exists
+            if not self.is_valid_unit(base):
+                raise ValueError(f"Unknown unit '{base}' in term '{term}'")
+
+            # Get factors
+            prefix_factor = self.si_prefixes.get(prefix, 1.0)
+            base_factor = self.get_base_unit_factor(base)
+            total_unit_factor = prefix_factor * base_factor
+
+            # Update overall factor
+            factor *= coef * (total_unit_factor**exp)
+
+            # Update dimensions
+            unit_dim = self.get_unit_dimension(base)
+            for dimension, power in unit_dim.items():
+                components[dimension] += power * exp
+
+            i += 1
+
+        # Remove components that have 0 power
+        components = self._clean_dimensions(components)
+        return factor, dict(components)
+
+    def _resolve_aliases_in_definition(self, definition):
+        # Replace aliases in reverse-length order to handle compound units first
+        sorted_aliases = sorted(self.aliases.keys(), key=lambda x: (-len(x), x))
+
+        # Use word boundaries to prevent partial matches
+        for alias in sorted_aliases:
+            pattern = r"\b" + re.escape(alias) + r"\b"
+            definition = re.sub(pattern, self.aliases[alias], definition)
+
+        return definition
+
+    def split_prefix(self, unit):
+        # First check if the entire unit is valid
+        if self.is_valid_unit(unit):
+            return "", unit
+
+        # Then check for prefixes
+        for prefix in self._sorted_prefixes:
+            if unit.startswith(prefix):
+                remaining = unit[len(prefix) :]
+                if self.is_valid_unit(remaining):
+                    return prefix, remaining
+        return "", unit
+
+    def is_valid_unit(self, unit):
+        # Check both direct registry and aliases
+        return unit in self.unit_registry or unit in self.aliases
+
+    def get_base_unit_factor(self, unit):
+        # Follow aliases to canonical name
+        canonical = self.aliases.get(unit, unit)
+        if canonical not in self.unit_registry:
+            raise ValueError(f"Unknown unit: {unit}")
+        return self.unit_registry.get(canonical, {}).get("factor", 1.0)
+
+    def get_unit_dimension(self, unit):
+        canonical = self.aliases.get(unit, unit)
+        if canonical not in self.unit_registry:
+            raise ValueError(f"Unknown unit: {unit}")
+        return self.unit_registry[canonical]["dimension"]
+
+    def _create_dimension_dict(self, dimensions):
+        dim_dict = defaultdict(float)
+        for dim in dimensions:
+            if "^" in dim:
+                base, exp = dim.split("^")
+                dim_dict[base] += float(exp)
+            else:
+                dim_dict[dim] += 1
+        return dict(dim_dict)
+
+    def _clean_dimensions(self, dimension_dict):
+        """Remove dimensions with zero exponents"""
+        return {k: v for k, v in dimension_dict.items() if v != 0}
+
+    def convert(self, value, from_unit, to_unit):
+        """
+        Convert between compatible units with dimensional analysis
+
+        Args:
+            value: Numerical value to convert
+            from_unit: Source unit (supports aliases and prefixes)
+            to_unit: Target unit (supports aliases and prefixes)
+
+        Returns:
+            Converted value in target units
+
+        Raises:
+            ValueError: On dimensional mismatch or unknown units
+        """
+        from_factor, from_dim = self._get_unit_info(from_unit)
+        to_factor, to_dim = self._get_unit_info(to_unit)
+
+        # Clean dimensions (redundant safeguard)
+        from_dim = self._clean_dimensions(from_dim)
+        to_dim = self._clean_dimensions(to_dim)
 
         if from_dim != to_dim:
-            raise ValueError(f"Incompatible dimensions: {from_dim} and {to_dim}")
+            raise ValueError(f"Incompatible dimensions: {from_dim} vs {to_dim}")
 
-        # Apply prefix multipliers to value
-        value = value * from_multiplier / to_multiplier
+        return value * from_factor / to_factor
 
-        # Special case for compound units like jansky
-        if from_canonical in cls.compound_units and to_canonical in cls.compound_units:
-            # Both are compound units with the same dimension, convert through SI
-            from_factor = cls.compound_units[from_canonical]["conversion_factor"]
-            to_factor = cls.compound_units[to_canonical]["conversion_factor"]
-            return value * from_factor / to_factor
+    def _get_unit_info(self, unit):
+        # Get both the parsed factor and components
+        parsed_factor, components = self.parse_definition(unit)
 
-        # Dispatch to the appropriate conversion method
-        if from_dim == "energy":
-            return cls.convert_energy(value, from_canonical, to_canonical)
-        elif from_dim == "length":
-            return cls.convert_length(value, from_canonical, to_canonical)
-        elif from_dim == "time":
-            return cls.convert_time(value, from_canonical, to_canonical)
-        elif from_dim == "mass":
-            return cls.convert_mass(value, from_canonical, to_canonical)
-        elif from_dim == "frequency":
-            # Frequency is just 1/time
-            return cls.convert_time(value, to_canonical, from_canonical)  # Inversion
-        elif from_dim in cls.dimensions:
-            # For other dimensions, use compound unit conversion
-            if (
-                from_canonical in cls.compound_units
-                and to_canonical in cls.compound_units
-            ):
-                # Get the definitions
-                from_def = cls.compound_units[from_canonical]["definition"]
-                to_def = cls.compound_units[to_canonical]["definition"]
-                # Convert through the definitions
-                return cls.convert_compound(value, from_def, to_def)
-            else:
-                raise ValueError(
-                    f"Units {from_canonical} and {to_canonical} not directly convertible"
-                )
-        else:
-            raise ValueError(f"Unsupported dimension: {from_dim}")
+        # Start with the parsed factor (numerical coefficients + prefixes)
+        total_factor = parsed_factor
 
-    @classmethod
-    def is_dimensionally_compatible(cls, from_parts, to_parts):
-        # DOES NOT WORK FOR NATURAL UNITS - FIX!!!!
+        # Multiply by base unit conversion factors
+        for dim, exp in components.items():
+            base_unit = self._dim_to_base(dim)
+            base_factor = self.unit_registry[base_unit]["factor"]
+            total_factor *= base_factor**exp
 
-        # Check that the same dimensions appear in numerator and denominator
-        # from_num_dims = {cls.get_unit_dimension(u) for u in from_parts["numerator"]}
-        # to_num_dims = {cls.get_unit_dimension(u) for u in to_parts["numerator"]}
+        return total_factor, components
 
-        # from_denom_dims = {cls.get_unit_dimension(u) for u in from_parts["denominator"]}
-        # to_denom_dims = {cls.get_unit_dimension(u) for u in to_parts["denominator"]}
-
-        # Check powers for each dimension
-        from_dim_powers = {}
-        to_dim_powers = {}
-
-        # Count powers in numerator
-        for unit, power in from_parts["numerator"].items():
-            dim = cls.get_unit_dimension(unit)
-            from_dim_powers[dim] = from_dim_powers.get(dim, 0) + power
-
-        for unit, power in to_parts["numerator"].items():
-            dim = cls.get_unit_dimension(unit)
-            to_dim_powers[dim] = to_dim_powers.get(dim, 0) + power
-
-        # Subtract powers in denominator
-        for unit, power in from_parts["denominator"].items():
-            dim = cls.get_unit_dimension(unit)
-            from_dim_powers[dim] = from_dim_powers.get(dim, 0) - power
-
-        for unit, power in to_parts["denominator"].items():
-            dim = cls.get_unit_dimension(unit)
-            to_dim_powers[dim] = to_dim_powers.get(dim, 0) - power
-
-        # Compare final dimension powers
-        return from_dim_powers == to_dim_powers
-
-    @classmethod
-    def convert_compound(cls, value, from_unit_str, to_unit_str):
-        # Handle special case of simple/predefined units
-        if from_unit_str in cls.compound_units and to_unit_str in cls.compound_units:
-            # Both are predefined compound units, check if they're compatible
-            from_dim = cls.compound_units[from_unit_str]["dimension"]
-            to_dim = cls.compound_units[to_unit_str]["dimension"]
-
-            if from_dim == to_dim:
-                # Use simple conversion
-                return cls.convert_simple_unit(value, from_unit_str, to_unit_str)
-
-        # Parse the compound units
-        from_parts, from_multiplier = cls.parse_compound_unit(from_unit_str)
-        to_parts, to_multiplier = cls.parse_compound_unit(to_unit_str)
-
-        # Apply prefix multipliers
-        value = value * from_multiplier / to_multiplier
-
-        # Check dimensional compatibility
-        if not cls.is_dimensionally_compatible(from_parts, to_parts):
-            raise ValueError(
-                f"Units {from_unit_str} and {to_unit_str} are not dimensionally compatible"
-            )
-
-        # Convert by applying conversions for each component
-        result = value
-
-        # Convert numerator components
-        for from_unit, from_power in from_parts["numerator"].items():
-            # Find matching dimension in target
-            from_dim = cls.get_unit_dimension(from_unit)
-            to_unit = None
-
-            for candidate in to_parts["numerator"]:
-                if cls.get_unit_dimension(candidate) == from_dim:
-                    to_unit = candidate
-                    break
-
-            if to_unit:
-                # Convert and apply the power
-                conversion_factor = cls.convert_simple_unit(1.0, from_unit, to_unit)
-                result *= conversion_factor**from_power
-
-        # Convert denominator components
-        for from_unit, from_power in from_parts["denominator"].items():
-            # Find matching dimension in target
-            from_dim = cls.get_unit_dimension(from_unit)
-            to_unit = None
-
-            for candidate in to_parts["denominator"]:
-                if cls.get_unit_dimension(candidate) == from_dim:
-                    to_unit = candidate
-                    break
-
-            if to_unit:
-                # Convert and apply the power (inverse because it's denominator)
-                conversion_factor = cls.convert_simple_unit(1.0, from_unit, to_unit)
-                result /= conversion_factor**from_power
-
-        return result
-
-    @classmethod
-    def handle_natural_units(cls, unit_str):
-        """
-        Special handling for eV-based units with natural constants
-
-        Args:
-            unit_str (str): Unit string like "eV" or "eV/c^2"
-
-        Returns:
-            str: The physical dimension this unit represents
-
-        Notes:
-            In natural units where ħ=c=1:
-            - eV is energy
-            - eV/c² is mass (E=mc²): eV -> eV/c² = eV/(3e8)² ≈ 1.78e-36 kg
-            - eV⁻¹ as length (ħc/E): ħc/eV ≈ 1.97e-7 m
-            - eV⁻¹ as time (ħ/E): ħ/eV ≈ 6.58e-16 s
-
-            Conversion factors are stored in the base dictionaries.
-        """
-        # Normalize the unit first
-        unit, _ = cls.normalize_unit(unit_str)
-
-        if "eV" in unit:
-            # Common patterns in high-energy physics
-            if unit == "eV":
-                # Context-dependent: could be energy or mass (E=mc²)
-                return "energy"  # Default to energy
-            elif unit in ["eV/c^2", "eV/c²"]:
-                return "mass"
-            elif unit == "eV^-1":
-                # Could be length (ħc/E) or time (ħ/E)
-                return "length"  # Default to length
-
-        # Default to normal handling
-        return cls.get_unit_dimension(unit)
-
-    @classmethod
-    def convert_length(cls, value, from_unit, to_unit):
-        # Normalize units
-        from_unit = cls.unit_aliases.get(from_unit, from_unit)
-        to_unit = cls.unit_aliases.get(to_unit, to_unit)
-
-        base_value = value * cls.lengths[from_unit]
-        converted = base_value / cls.lengths[to_unit]
-        return converted
-
-    @classmethod
-    def convert_mass(cls, value, from_unit, to_unit):
-        # Normalize units
-        from_unit = cls.unit_aliases.get(from_unit, from_unit)
-        to_unit = cls.unit_aliases.get(to_unit, to_unit)
-
-        base_value = value * cls.masses[from_unit]
-        converted = base_value / cls.masses[to_unit]
-        return converted
-
-    @classmethod
-    def convert_time(cls, value, from_unit, to_unit):
-        # Normalize units
-        from_unit = cls.unit_aliases.get(from_unit, from_unit)
-        to_unit = cls.unit_aliases.get(to_unit, to_unit)
-
-        base_value = value * cls.times[from_unit]
-        converted = base_value / cls.times[to_unit]
-        return converted
-
-    @classmethod
-    def convert_energy(cls, value, from_unit, to_unit):
-        # Normalize units
-        from_unit = cls.unit_aliases.get(from_unit, from_unit)
-        to_unit = cls.unit_aliases.get(to_unit, to_unit)
-
-        base_value = value * cls.energies[from_unit]
-        converted = base_value / cls.energies[to_unit]
-        return converted
-
-    @classmethod
-    def convert(cls, value, from_unit, to_unit):
-        """
-        Main public conversion method that handles all unit types.
-
-        Args:
-            value (float): Value to convert
-            from_unit (str): Source unit string (simple or compound)
-            to_unit (str): Target unit string (simple or compound)
-
-        Returns:
-            float: Converted value
-        """
-        # Check if these are predefined compound units
-        if from_unit in cls.compound_units or to_unit in cls.compound_units:
-            # Handle predefined compound units
-            if from_unit in cls.compound_units and to_unit in cls.compound_units:
-                # Both are compound units, check if they have same dimension
-                from_dim = cls.compound_units[from_unit]["dimension"]
-                to_dim = cls.compound_units[to_unit]["dimension"]
-
-                if from_dim == to_dim:
-                    # Direct conversion between compound units of the same dimension
-                    from_factor = cls.compound_units[from_unit]["conversion_factor"]
-                    to_factor = cls.compound_units[to_unit]["conversion_factor"]
-                    return value * from_factor / to_factor
-                else:
-                    # Need to expand definitions and convert
-                    from_def = cls.compound_units[from_unit]["definition"]
-                    to_def = cls.compound_units[to_unit]["definition"]
-                    return cls.convert_compound(value, from_def, to_def)
-            elif from_unit in cls.compound_units:
-                # Expand the from_unit definition and convert to to_unit
-                from_def = cls.compound_units[from_unit]["definition"]
-                from_factor = cls.compound_units[from_unit]["conversion_factor"]
-                return cls.convert_compound(value * from_factor, from_def, to_unit)
-            else:  # to_unit in cls.compound_units
-                # Expand the to_unit definition and convert from from_unit
-                to_def = cls.compound_units[to_unit]["definition"]
-                to_factor = cls.compound_units[to_unit]["conversion_factor"]
-                return cls.convert_compound(value, from_unit, to_def) / to_factor
-
-        # Check if these are simple units or compound units
-        if "/" in from_unit or "*" in from_unit or "/" in to_unit or "*" in to_unit:
-            return cls.convert_compound(value, from_unit, to_unit)
-        else:
-            return cls.convert_simple_unit(value, from_unit, to_unit)
+    def _dim_to_base(self, dim):
+        try:
+            return self.base_dimension_map[dim]
+        except KeyError:
+            raise ValueError(f"No base unit found for dimension {dim}")
 
 
 # Access natural constants (first element of tuple is the magnitude)
@@ -886,220 +522,210 @@ REDUCED_PLANCK = constants.h_bar[0]  # ħ, J·s
 BOLTZMANN_CONSTANT = constants.k_b[0]  # k_B, J/K
 ELEMENTARY_CHARGE = constants.e[0]  # e, C
 
-unit_converter = UnitConverter()
-# Define newton and speed of light first
-unit_converter.add_compound_unit(
-    name="newton", definition="kg*m/s^2", dimension="force", aliases=["N"]
-)
-
-unit_converter.add_compound_unit(
-    name="speed_of_light",
-    definition=f"{SPEED_OF_LIGHT} m/s",
-    dimension="velocity",
-    aliases=["c"],
-)
-
-# Add natural unit conversions
-unit_converter.add_compound_unit(
-    name="electronvolt_mass",
-    definition="1.78266192e-36 kg",  # eV/c² in kg
-    dimension="mass",
-    aliases=["eV/c^2", "eV/c²"],
-)
-
-unit_converter.add_compound_unit(
-    name="electronvolt_length",
-    definition="1.97327e-7 m",  # ħc/eV in m
-    dimension="length",
-    aliases=["eV^-1_length", "hbar*c/eV", "ħc/eV", "ħ*c/eV"],
-)
-
-unit_converter.add_compound_unit(
-    name="electronvolt_time",
-    definition="6.582119e-16 s",  # ħ/eV in s
-    dimension="time",
-    aliases=["eV^-1_time", "hbar/eV", "ħ/eV"],
-)
-
-# Add specialty units after the class definition
-unit_converter.add_compound_unit(
-    name="jansky",
-    definition="1e-26 watt/meter^2/hertz",
-    dimension="energy/time/length^2/frequency",
-    #    conversion_factor=1e-26,
-    aliases=["Jy", "jy", "Jansky", "janskys", "Janskys"],
-)
-
-# Magnetic field units
-unit_converter.add_compound_unit(
-    name="tesla",
-    definition="kg/s^2/A",  # kg per second² per ampere
-    dimension="magnetic_flux_density",
-    aliases=["T"],
-)
-
-unit_converter.add_compound_unit(
-    name="gauss",
-    definition="1e-4 tesla",
-    dimension="magnetic_flux_density",
-    conversion_factor=1e-4,  # Explicit conversion factor needed
-    aliases=["G", "Gauss"],
-)
-
-# Astronomical distance units
-unit_converter.add_compound_unit(
-    name="parsec",
-    definition="3.0857e16 meter",
-    dimension="length",
-    conversion_factor=3.0857e16,
-    aliases=["pc", "parsecs"],
-)
-
-unit_converter.add_compound_unit(
-    name="light_year",
-    definition="9.461e15 meter",
-    dimension="length",
-    conversion_factor=9.461e15,
-    aliases=["ly", "lightyear", "light-year"],
-)
-
-unit_converter.add_compound_unit(
-    name="astronomical_unit",
-    definition="1.496e11 meter",
-    dimension="length",
-    aliases=["au", "AU"],
-)
-
-# Nuclear and radiation units
-unit_converter.add_compound_unit(
-    name="barn", definition="1e-28 meter^2", dimension="area", aliases=["b", "barns"]
-)
-
-unit_converter.add_compound_unit(
-    name="becquerel",
-    definition="1/second",
-    dimension="radioactivity",
-    conversion_factor=1,
-    aliases=["Bq"],
-)
-
-unit_converter.add_compound_unit(
-    name="curie",
-    definition="3.7e10 becquerel",
-    dimension="radioactivity",
-    conversion_factor=3.7e10,
-    aliases=["Ci"],
-)
-
-
-unit_converter.add_compound_unit(
-    name="roentgen",
-    definition="2.58e-4 coulomb/kg",
-    dimension="exposure",
-    aliases=["R"],
-)
-
-# Temperature units already handled through base conversion, but add Kelvin explicitly
-unit_converter.add_compound_unit(
-    name="kelvin",
-    definition="1 kelvin",  # Base unit for temperature
-    dimension="temperature",
-    aliases=["K"],
-)
-
-# Pressure units
-unit_converter.add_compound_unit(
-    name="pascal",
-    definition="newton/meter^2",  # N/m²
-    dimension="pressure",
-    aliases=["Pa"],
-)
-
-unit_converter.add_compound_unit(
-    name="bar",
-    definition="1e5 pascal",  # 100,000 Pa
-    dimension="pressure",
-    conversion_factor=1e5,
-    aliases=["bar"],
-)
-
-unit_converter.add_compound_unit(
-    name="atmosphere",
-    definition="101325 pascal",  # Standard atmospheric pressure
-    dimension="pressure",
-    aliases=["atm"],
-)
-
-unit_converter.add_compound_unit(
-    name="torr",
-    definition="133.322 pascal",  # 1 mmHg
-    dimension="pressure",
-    aliases=["Torr", "mmHg"],
-)
-
-unit_converter.add_compound_unit(
-    name="psi",
-    definition="6894.76 pascal",  # Pounds per square inch
-    dimension="pressure",
-    conversion_factor=6894.76,
-    aliases=["PSI", "lb/in^2", "pound_per_square_inch"],
-)
-
-# Flow rate units - Volume
-unit_converter.add_compound_unit(
-    name="cubic_meter_per_second",
-    definition="meter^3/second",
-    dimension="volume_flow_rate",
-    aliases=["m³/s", "m^3/s"],
-)
-
-unit_converter.add_compound_unit(
-    name="liter_per_second",
-    definition="0.001 cubic_meter_per_second",
-    dimension="volume_flow_rate",
-    aliases=["L/s", "l/s"],
-)
-
-unit_converter.add_compound_unit(
-    name="cubic_foot_per_second",
-    definition="0.0283168 cubic_meter_per_second",
-    dimension="volume_flow_rate",
-    aliases=["ft³/s", "cfs"],
-)
-
-unit_converter.add_compound_unit(
-    name="gallon_per_minute",
-    definition="6.30902e-5 cubic_meter_per_second",  # US gallon
-    dimension="volume_flow_rate",
-    aliases=["gpm", "GPM"],
-)
-
-# Flow rate units - Mass
-unit_converter.add_compound_unit(
-    name="kilogram_per_second",
-    definition="kg/s",
-    dimension="mass_flow_rate",
-    aliases=["kg/s"],
-)
-
-unit_converter.add_compound_unit(
-    name="pound_per_second",
-    definition="0.453592 kilogram_per_second",
-    dimension="mass_flow_rate",
-    aliases=["lb/s"],
-)
-
-# Additional energy rate units
-unit_converter.add_compound_unit(
-    name="btu_per_hour",
-    definition="0.293071 watt",  # BTU/h
-    dimension="energy/time",
-    aliases=["BTU/h", "BTUH"],
-)
-
-unit_converter.add_compound_unit(
-    name="ton_of_refrigeration",
-    definition="3516.85 watt",  # 12,000 BTU/h
-    dimension="energy/time",
-    aliases=["TR", "ton"],
-)
+# unit_converter = UnitConverter()
+# No need to define joule here - already defined in class-level compound_units
+#
+## Define newton
+# unit_converter.add_compound_unit(
+#    name="newton", definition="kg*m/s^2", dimension="force", aliases=["N"]
+# )
+#
+# unit_converter.add_compound_unit(
+#    name="speed_of_light",
+#    definition=f"{SPEED_OF_LIGHT} m/s",
+#    dimension="velocity",
+#    aliases=["c"],
+# )
+#
+## Add natural unit conversions
+# unit_converter.add_compound_unit(
+#    name="electronvolt_mass",
+#    definition="1.78266192e-36 kg",  # eV/c² in kg
+#    dimension="mass",
+#    aliases=["eV/c^2", "eV/c²"],
+# )
+#
+# unit_converter.add_compound_unit(
+#    name="electronvolt_length",
+#    definition="1.97327e-7 m",  # ħc/eV in m
+#    dimension="length",
+#    aliases=["eV^-1_length", "hbar*c/eV", "ħc/eV", "ħ*c/eV"],
+# )
+#
+# unit_converter.add_compound_unit(
+#    name="electronvolt_time",
+#    definition="6.582119e-16 s",  # ħ/eV in s
+#    dimension="time",
+#    aliases=["eV^-1_time", "hbar/eV", "ħ/eV"],
+# )
+#
+## Add specialty units after the class definition
+# unit_converter.add_compound_unit(
+#    name="jansky",
+#    definition="1e-26 watt/meter^2/hertz",
+#    dimension="mass/time^2",  # Simplified from mass*length^2/time^3 * 1/length^2 * time = mass/time^2
+#    aliases=["Jy", "jy", "Jansky", "janskys", "Janskys"],
+# )
+#
+## Define gauss as a derived unit of tesla
+# unit_converter.add_compound_unit(
+#    name="gauss",
+#    definition="1e-4 tesla",  # 1 gauss = 1e-4 tesla
+#    # No dimension provided - should be inferred from tesla
+#    aliases=["G", "Gauss"],
+# )
+#
+## Astronomical distance units
+# unit_converter.add_compound_unit(
+#    name="parsec",
+#    definition="3.0857e16 meter",
+#    dimension="length",
+#    aliases=["pc", "parsecs"],
+# )
+#
+# unit_converter.add_compound_unit(
+#    name="light_year",
+#    definition="9.461e15 meter",
+#    dimension="length",
+#    aliases=["ly", "lightyear", "light-year"],
+# )
+#
+# unit_converter.add_compound_unit(
+#    name="astronomical_unit",
+#    definition="1.496e11 meter",
+#    dimension="length",
+#    aliases=["au", "AU"],
+# )
+#
+## Nuclear and radiation units
+# unit_converter.add_compound_unit(
+#    name="barn",
+#    definition="1e-28 meter^2",
+#    dimension="length^2",
+#    aliases=["b", "barns"],
+# )
+#
+# unit_converter.add_compound_unit(
+#    name="becquerel",
+#    definition="1/second",
+#    dimension="1/time",  # Radioactivity is decays per time unit
+#    aliases=["Bq"],
+# )
+#
+# unit_converter.add_compound_unit(
+#    name="curie",
+#    definition="3.7e10 becquerel",
+#    dimension="1/time",  # Same dimension as becquerel
+#    aliases=["Ci"],
+# )
+#
+# unit_converter.add_compound_unit(
+#    name="roentgen",
+#    definition="2.58e-4 coulomb/kg",
+#    dimension="current*time/mass",  # Charge/mass = current*time/mass
+#    aliases=["R"],
+# )
+#
+## Temperature units already handled through base conversion, but add Kelvin explicitly
+# unit_converter.add_compound_unit(
+#    name="kelvin",
+#    definition="1 kelvin",  # Base unit for temperature
+#    dimension="temperature",
+#    aliases=["K"],
+# )
+#
+## Pressure units
+# unit_converter.add_compound_unit(
+#    name="pascal",
+#    definition="newton/meter^2",  # N/m²
+#    dimension="mass/length/time^2",  # Force/area = mass*acceleration/area
+#    aliases=["Pa"],
+# )
+#
+# unit_converter.add_compound_unit(
+#    name="bar",
+#    definition="1e5 pascal",  # 100,000 Pa
+#    dimension="mass/length/time^2",  # Same as pascal
+#    aliases=["bar"],
+# )
+#
+# unit_converter.add_compound_unit(
+#    name="atmosphere",
+#    definition="101325 pascal",  # Standard atmospheric pressure
+#    dimension="mass/length/time^2",  # Same as pascal
+#    aliases=["atm"],
+# )
+#
+# unit_converter.add_compound_unit(
+#    name="torr",
+#    definition="133.322 pascal",  # 1 mmHg
+#    dimension="mass/length/time^2",  # Same as pascal
+#    aliases=["Torr", "mmHg"],
+# )
+#
+# unit_converter.add_compound_unit(
+#    name="psi",
+#    definition="6894.76 pascal",  # Pounds per square inch
+#    dimension="mass/length/time^2",  # Same as pascal
+#    aliases=["PSI", "lb/in^2", "pound_per_square_inch"],
+# )
+#
+## Flow rate units - Volume
+# unit_converter.add_compound_unit(
+#    name="cubic_meter_per_second",
+#    definition="meter^3/second",
+#    dimension="length^3/time",  # Volume per time
+#    aliases=["m³/s", "m^3/s"],
+# )
+#
+# unit_converter.add_compound_unit(
+#    name="liter_per_second",
+#    definition="0.001 cubic_meter_per_second",
+#    dimension="length^3/time",  # Same as cubic_meter_per_second
+#    aliases=["L/s", "l/s"],
+# )
+#
+# unit_converter.add_compound_unit(
+#    name="cubic_foot_per_second",
+#    definition="0.0283168 cubic_meter_per_second",
+#    dimension="length^3/time",  # Same as cubic_meter_per_second
+#    aliases=["ft³/s", "cfs"],
+# )
+#
+# unit_converter.add_compound_unit(
+#    name="gallon_per_minute",
+#    definition="6.30902e-5 cubic_meter_per_second",  # US gallon
+#    dimension="length^3/time",  # Same as cubic_meter_per_second
+#    aliases=["gpm", "GPM"],
+# )
+#
+## Flow rate units - Mass
+# unit_converter.add_compound_unit(
+#    name="kilogram_per_second",
+#    definition="kg/s",
+#    dimension="mass/time",  # Mass per time
+#    aliases=["kg/s"],
+# )
+#
+# unit_converter.add_compound_unit(
+#    name="pound_per_second",
+#    definition="0.453592 kilogram_per_second",
+#    dimension="mass/time",  # Same as kilogram_per_second
+#    aliases=["lb/s"],
+# )
+#
+## Additional energy rate units
+# unit_converter.add_compound_unit(
+#    name="btu_per_hour",
+#    definition="0.293071 watt",  # BTU/h
+#    dimension="energy/time",  # Energy per time
+#    aliases=["BTU/h", "BTUH"],
+# )
+#
+# unit_converter.add_compound_unit(
+#    name="ton_of_refrigeration",
+#    definition="3516.85 watt",  # 12,000 BTU/h
+#    dimension="energy/time",  # Same as watt
+#    aliases=["TR", "ton"],
+# )
+#
